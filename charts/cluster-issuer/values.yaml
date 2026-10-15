@@ -1,0 +1,11 @@
+# Name used in Ingress annotations: cert-manager.io/cluster-issuer: <name>
+name: letsencrypt-prod
+
+# Let's Encrypt production ACME server
+server: https://acme-v02.api.letsencrypt.org/directory
+
+# Optional contact email for the ACME account (leave empty for none)
+email: ""
+
+# IngressClass that serves the HTTP-01 challenge
+ingressClassName: nginx

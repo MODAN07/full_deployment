@@ -1,0 +1,26 @@
+# Terraform working directory and local state (state lives in S3)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+
+# Local variable overrides may contain secrets
+*.auto.tfvars
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Private keys and kubeconfigs
+*.pem
+*.key
+kubeconfig
+*.kubeconfig
+
+# CI plan artifacts
+foundation.tfplan
+complete.tfplan

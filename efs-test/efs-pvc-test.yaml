@@ -1,0 +1,36 @@
+# Quick test for the efs-sc StorageClass.
+# kubectl apply -f efs-test/efs-pvc-test.yaml
+# kubectl exec efs-test -- cat /data/out.txt
+# kubectl delete -f efs-test/efs-pvc-test.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 5Gi   # required by Kubernetes, but EFS is elastic and ignores it
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: efs-test
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["/bin/sh", "-c", "while true; do date >> /data/out.txt; sleep 5; done"]
+      volumeMounts:
+        - name: efs
+          mountPath: /data
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+  volumes:
+    - name: efs
+      persistentVolumeClaim:
+        claimName: efs-claim

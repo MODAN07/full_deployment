@@ -1,0 +1,28 @@
+# Exposes car-service at https://car.digitalwitch.online
+# Requires a Namecheap CNAME record: car -> NGINX load balancer hostname
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: car-service
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # F5 NGINX rejects a second Ingress for the same host, so cert-manager
+    # adds the ACME challenge path to this Ingress instead of creating its own
+    acme.cert-manager.io/http01-edit-in-place: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - car.digitalwitch.online
+      secretName: car-service-tls
+  rules:
+    - host: car.digitalwitch.online
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: car-service
+                port:
+                  name: http
