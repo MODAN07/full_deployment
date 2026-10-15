@@ -1,9 +1,24 @@
-name: Terraform EKS deployment
+
+name: Terraform EKS Management
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose whether to deploy or destroy the infrastructure"
+        required: true
+        type: choice
+        options:
+          - deploy
+          - destroy
+      confirm_destroy:
+        description: "For destruction only, select yes to confirm deletion"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
 
 permissions:
   contents: read
@@ -14,15 +29,17 @@ concurrency:
 
 env:
   AWS_REGION: us-east-1
-  TF_VERSION: 1.10.5
+  TF_VERSION: "1.10.5"
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_VAR_kubeconfig_bucket: ${{ secrets.TF_STATE_BUCKET }}
 
 jobs:
-  deploy:
-    name: Validate and deploy EKS architecture
+  terraform:
+    name: Manage EKS infrastructure
+    if: ${{ inputs.action == 'deploy' || (inputs.action == 'destroy' && inputs.confirm_destroy == 'yes') }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,7 +50,7 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
-      - name: Configure AWS credentials from GitHub Secrets
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -46,9 +63,9 @@ jobs:
       - name: Check Terraform formatting
         run: terraform fmt -check -recursive
 
-      - name: Initialize Terraform with S3 backend
+      - name: Initialize Terraform with shared S3 state
         run: |
-          terraform init -input=false \
+          terraform init -reconfigure -input=false \
             -backend-config="bucket=${TF_VAR_kubeconfig_bucket}" \
             -backend-config="key=eks/terraform.tfstate" \
             -backend-config="region=${AWS_REGION}" \
@@ -58,27 +75,25 @@ jobs:
       - name: Validate Terraform
         run: terraform validate
 
-      # The Kubernetes/Helm providers depend on the EKS API endpoint. Create
-      # the AWS foundation first, then run a normal full plan/apply after the
-      # cluster endpoint and node group exist in state.
+      # DEPLOY
       - name: Plan AWS foundation
+        if: ${{ inputs.action == 'deploy' }}
         run: terraform plan -input=false -out=foundation.tfplan -target=aws_eks_node_group.node_group
 
       - name: Apply AWS foundation
+        if: ${{ inputs.action == 'deploy' }}
         run: terraform apply -input=false -auto-approve foundation.tfplan
 
       - name: Plan complete architecture
+        if: ${{ inputs.action == 'deploy' }}
         run: terraform plan -input=false -out=complete.tfplan
 
       - name: Apply complete architecture
+        if: ${{ inputs.action == 'deploy' }}
         run: terraform apply -input=false -auto-approve complete.tfplan
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'latest'
-
       - name: Verify EKS cluster and nodes
+        if: ${{ inputs.action == 'deploy' }}
         run: |
           CLUSTER_NAME="$(terraform output -raw eks_cluster_name)"
           aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME"
@@ -88,3 +103,12 @@ jobs:
           kubectl -n nginx-ingress rollout status deployment/nginx-ingress-controller --timeout=300s
           kubectl -n argocd rollout status deployment/argocd-server --timeout=300s
           kubectl get storageclass efs-sc
+
+      # DESTROY
+      - name: Preview infrastructure destruction
+        if: ${{ inputs.action == 'destroy' && inputs.confirm_destroy == 'yes' }}
+        run: terraform plan -destroy -input=false -out=destroy.tfplan
+
+      - name: Destroy infrastructure
+        if: ${{ inputs.action == 'destroy' && inputs.confirm_destroy == 'yes' }}
+        run: terraform apply -input=false -auto-approve destroy.tfplan
