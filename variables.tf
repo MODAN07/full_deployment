@@ -8,14 +8,14 @@ variable "aws_region" {
 variable "cluster_name" {
   description = "Name of the EKS cluster; also used as a prefix for related resources"
   type        = string
-  default     = "smartcloud-eks"
+  default     = "dmg-eks"
 }
 
 # ---- Networking ----
 variable "vpc_name" {
   description = "Name tag of the VPC"
   type        = string
-  default     = "smartcloud-vpc"
+  default     = "dmg-vpc"
 }
 
 variable "vpc_cidr" {
@@ -111,7 +111,7 @@ variable "node_max_size" {
 variable "key_pair_name" {
   description = "Name of the EC2 key pair (private key is written to <name>.pem)"
   type        = string
-  default     = "smartcloud-eks-key"
+  default     = "moses-eks-key"
 }
 
 # ---- Helm chart versions ----
@@ -161,14 +161,14 @@ variable "letsencrypt_server" {
 variable "letsencrypt_email" {
   description = "Optional contact email for the Let's Encrypt account"
   type        = string
-  default     = "chukwunonsosmartagbawo@gmail.com"
+  default     = "moses.daniel90@gmail.com"
 }
 
 # ---- Argo CD ----
 variable "argocd_hostname" {
   description = "Public hostname for the Argo CD UI (must match manifests/argocd-ingress.yaml)"
   type        = string
-  default     = "argocd.digitalwitch.online"
+  default     = "argocd.distechnologies.online"
 }
 
 # ---- EFS ----
